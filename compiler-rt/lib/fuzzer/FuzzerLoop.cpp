@@ -761,6 +761,7 @@ void Fuzzer::MutateAndTestOne() {
     II.NumExecutedMutations++;
     Corpus.IncrementNumExecutedMutations();
 
+    II.FuzzTimeSinceLastNewCov++;
     bool FoundUniqFeatures = false;
     bool NewCov = RunOne(CurrentUnitData, Size, /*MayDeleteFile=*/true, &II,
                          /*ForceAddToCorpus*/ false, &FoundUniqFeatures);
@@ -768,6 +769,13 @@ void Fuzzer::MutateAndTestOne() {
                             /*DuringInitialCorpusExecution*/ false);
     if (NewCov) {
       ReportNewCoverage(&II, {CurrentUnitData, CurrentUnitData + Size});
+      uint8_t currentUnitSHA1[kSHA1NumBytes];
+      ComputeSHA1(currentUnitSHA1, Size, currentUnitSHA1);
+      Printf("[^] SHA1=%s find new interests after %d tries, New SHA1=%s.\n", 
+        Sha1ToString(II.Sha1), 
+        II.FuzzTimeSinceLastNewCov, 
+        Sha1ToString(currentUnitSHA1));
+      II.FuzzTimeSinceLastNewCov = 0;
       break;  // We will mutate this input more in the next rounds.
     }
     if (Options.ReduceDepth && !FoundUniqFeatures)
