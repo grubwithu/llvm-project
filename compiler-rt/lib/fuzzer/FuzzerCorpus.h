@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <bitset>
 #include <chrono>
+#include <cstddef>
 #include <numeric>
 #include <random>
 #include <unordered_set>
@@ -47,6 +48,8 @@ struct InputInfo {
   double Energy = 0.0;
   double SumIncidence = 0.0;
   std::vector<std::pair<uint32_t, uint16_t>> FeatureFreqs;
+
+  size_t FuzzTimeSinceLastNewCov = 0;
 
   // Delete feature Idx and its frequency from FeatureFreqs.
   bool DeleteFeatureFreq(uint32_t Idx) {

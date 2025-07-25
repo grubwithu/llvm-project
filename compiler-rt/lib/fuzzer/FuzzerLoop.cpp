@@ -14,8 +14,10 @@
 #include "FuzzerMutate.h"
 #include "FuzzerPlatform.h"
 #include "FuzzerRandom.h"
+#include "FuzzerSHA1.h"
 #include "FuzzerTracePC.h"
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <mutex>
@@ -756,6 +758,7 @@ void Fuzzer::MutateAndTestOne() {
     II.NumExecutedMutations++;
     Corpus.IncrementNumExecutedMutations();
 
+	II.FuzzTimeSinceLastNewCov++;
     bool FoundUniqFeatures = false;
     bool NewCov = RunOne(CurrentUnitData, Size, /*MayDeleteFile=*/true, &II,
                          /*ForceAddToCorpus*/ false, &FoundUniqFeatures);
@@ -763,6 +766,13 @@ void Fuzzer::MutateAndTestOne() {
                             /*DuringInitialCorpusExecution*/ false);
     if (NewCov) {
       ReportNewCoverage(&II, {CurrentUnitData, CurrentUnitData + Size});
+	  uint8_t currentUnitSHA1[kSHA1NumBytes];
+	  ComputeSHA1(CurrentUnitData, Size, currentUnitSHA1);
+	  Printf("[^] SHA1=%s find new interests after %d tries, New SHA1=%s.\n",
+			  Sha1ToString(II.Sha1).c_str(),
+			  II.FuzzTimeSinceLastNewCov,
+			  Sha1ToString(currentUnitSHA1).c_str());
+	  II.FuzzTimeSinceLastNewCov = 0;
       break;  // We will mutate this input more in the next rounds.
     }
     if (Options.ReduceDepth && !FoundUniqFeatures)
