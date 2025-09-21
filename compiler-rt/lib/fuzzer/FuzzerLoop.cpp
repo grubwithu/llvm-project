@@ -717,6 +717,18 @@ void Fuzzer::TryDetectingAMemoryLeak(const uint8_t *Data, size_t Size,
   }
 }
 
+static void FluentF(char* str) {
+	char* url = getenv("FLUENT_URL");
+	if (!url) return;
+	static char buffer[2048];
+	sprintf(buffer, 
+			"curl -X POST -H \"Content-Type: application/json\" -d \'%s\' %s",
+			str, url);
+	// GrubF("%s", buffer);
+	system(buffer);
+
+}
+
 void Fuzzer::MutateAndTestOne() {
   MD.StartMutationSequence();
 
@@ -772,6 +784,13 @@ void Fuzzer::MutateAndTestOne() {
 			  Sha1ToString(II.Sha1).c_str(),
 			  II.FuzzTimeSinceLastNewCov,
 			  Sha1ToString(currentUnitSHA1).c_str());
+    char buffer[2048];
+    sprintf(buffer,
+            "{\"fuzzer\": \"libFuzzer\", \"old\": \"%s\", \"new\": \"%s\", "
+            "\"tries\": \"%d\"}",
+            Sha1ToString(II.Sha1).c_str(), Sha1ToString(currentUnitSHA1).c_str(), 
+            II.FuzzTimeSinceLastNewCov);
+    FluentF(buffer);
 	  II.FuzzTimeSinceLastNewCov = 0;
       break;  // We will mutate this input more in the next rounds.
     }
