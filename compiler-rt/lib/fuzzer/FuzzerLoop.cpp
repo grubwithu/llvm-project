@@ -267,9 +267,35 @@ int Fuzzer::InterruptExitCode() {
   return F->Options.InterruptExitCode;
 }
 
+
+static void FluentF(char* str) {
+	char* url = getenv("FLUENT_URL");
+	if (!url) return;
+	static char buffer[2048];
+	sprintf(buffer, 
+			"curl -X POST -H \"Content-Type: application/json\" -d \'%s\' %s",
+			str, url);
+	// GrubF("%s", buffer);
+	system(buffer);
+
+}
+
+void ReportLogAtEnd(InputCorpus* Corpus) {
+  auto& II = Corpus->Inputs;
+  for (auto I : II) {
+    static char buffer[2048];
+    sprintf(buffer,
+            "{\"fuzzer\": \"libFuzzer\", \"sha\": \"%s\", \"tries\": %d}",
+            Sha1ToString(I->Sha1).c_str(), I->FuzzTimeTotal
+    );
+    FluentF(buffer);
+  }
+}
+
 void Fuzzer::InterruptCallback() {
   Printf("==%lu== libFuzzer: run interrupted; exiting\n", GetPid());
   PrintFinalStats();
+  ReportLogAtEnd(&F->Corpus);
   ScopedDisableMsanInterceptorChecks S; // RmDirRecursive may call opendir().
   RmDirRecursive(TempPath("FuzzWithFork", ".dir"));
   // Stop right now, don't perform any at-exit actions.
@@ -717,18 +743,6 @@ void Fuzzer::TryDetectingAMemoryLeak(const uint8_t *Data, size_t Size,
   }
 }
 
-static void FluentF(char* str) {
-	char* url = getenv("FLUENT_URL");
-	if (!url) return;
-	static char buffer[2048];
-	sprintf(buffer, 
-			"curl -X POST -H \"Content-Type: application/json\" -d \'%s\' %s",
-			str, url);
-	// GrubF("%s", buffer);
-	system(buffer);
-
-}
-
 void Fuzzer::MutateAndTestOne() {
   MD.StartMutationSequence();
 
@@ -771,6 +785,7 @@ void Fuzzer::MutateAndTestOne() {
     Corpus.IncrementNumExecutedMutations();
 
 	II.FuzzTimeSinceLastNewCov++;
+  II.FuzzTimeTotal++;
     bool FoundUniqFeatures = false;
     bool NewCov = RunOne(CurrentUnitData, Size, /*MayDeleteFile=*/true, &II,
                          /*ForceAddToCorpus*/ false, &FoundUniqFeatures);
@@ -787,7 +802,7 @@ void Fuzzer::MutateAndTestOne() {
     char buffer[2048];
     sprintf(buffer,
             "{\"fuzzer\": \"libFuzzer\", \"old\": \"%s\", \"new\": \"%s\", "
-            "\"tries\": \"%d\"}",
+            "\"tries\": %d}",
             Sha1ToString(II.Sha1).c_str(), Sha1ToString(currentUnitSHA1).c_str(), 
             II.FuzzTimeSinceLastNewCov);
     FluentF(buffer);

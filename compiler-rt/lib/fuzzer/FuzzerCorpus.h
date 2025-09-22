@@ -50,6 +50,7 @@ struct InputInfo {
   std::vector<std::pair<uint32_t, uint16_t>> FeatureFreqs;
 
   size_t FuzzTimeSinceLastNewCov = 0;
+  size_t FuzzTimeTotal = 0;
 
   // Delete feature Idx and its frequency from FeatureFreqs.
   bool DeleteFeatureFreq(uint32_t Idx) {
@@ -470,6 +471,8 @@ public:
 
   size_t NumFeatures() const { return NumAddedFeatures; }
   size_t NumFeatureUpdates() const { return NumUpdatedFeatures; }
+
+  friend void ReportLogAtEnd(InputCorpus* Corpus);
 
 private:
 
