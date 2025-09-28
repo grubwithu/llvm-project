@@ -472,7 +472,7 @@ public:
   size_t NumFeatures() const { return NumAddedFeatures; }
   size_t NumFeatureUpdates() const { return NumUpdatedFeatures; }
 
-  friend void ReportLogAtEnd(InputCorpus* Corpus);
+  friend void ReportCorpusLog(InputCorpus* Corpus);
 
 private:
 

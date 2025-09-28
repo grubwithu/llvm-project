@@ -280,22 +280,10 @@ static void FluentF(char* str) {
 
 }
 
-void ReportLogAtEnd(InputCorpus* Corpus) {
-  auto& II = Corpus->Inputs;
-  for (auto I : II) {
-    static char buffer[2048];
-    sprintf(buffer,
-            "{\"fuzzer\": \"libFuzzer\", \"sha\": \"%s\", \"tries\": %d}",
-            Sha1ToString(I->Sha1).c_str(), I->FuzzTimeTotal
-    );
-    FluentF(buffer);
-  }
-}
-
 void Fuzzer::InterruptCallback() {
   Printf("==%lu== libFuzzer: run interrupted; exiting\n", GetPid());
   PrintFinalStats();
-  ReportLogAtEnd(&F->Corpus);
+  // ReportCorpusLog(&F->Corpus);
   ScopedDisableMsanInterceptorChecks S; // RmDirRecursive may call opendir().
   RmDirRecursive(TempPath("FuzzWithFork", ".dir"));
   // Stop right now, don't perform any at-exit actions.
@@ -632,7 +620,7 @@ ATTRIBUTE_NOINLINE bool Fuzzer::ExecuteCallback(const uint8_t *Data,
   if (CurrentUnitData && CurrentUnitData != Data)
     memcpy(CurrentUnitData, Data, Size);
   CurrentUnitSize = Size;
-  int CBRes = 0;
+  int CBRes = 0;  
   {
     ScopedEnableMsanInterceptorChecks S;
     AllocTracer.Start(Options.TraceMalloc);
@@ -903,6 +891,19 @@ void Fuzzer::ReadAndExecuteSeedCorpora(std::vector<SizedFile> &CorporaFiles) {
   }
 }
 
+void ReportCorpusLog(InputCorpus* Corpus) {
+  auto& II = Corpus->Inputs;
+  for (auto I : II) {
+    static char buffer[2048];
+    sprintf(buffer,
+            "{\"fuzzer\": \"libFuzzer\", \"sha\": \"%s\", \"tries\": %d}",
+            Sha1ToString(I->Sha1).c_str(), I->FuzzTimeTotal
+    );
+    FluentF(buffer);
+  }
+}
+
+
 void Fuzzer::Loop(std::vector<SizedFile> &CorporaFiles) {
   auto FocusFunctionOrAuto = Options.FocusFunction;
   DFT.Init(Options.DataFlowTrace, &FocusFunctionOrAuto, CorporaFiles,
@@ -916,6 +917,10 @@ void Fuzzer::Loop(std::vector<SizedFile> &CorporaFiles) {
 
   TmpMaxMutationLen =
       Min(MaxMutationLen, Max(size_t(4), Corpus.MaxInputSize()));
+
+  
+  auto last_log_time = system_clock::now();
+
 
   while (true) {
     auto Now = system_clock::now();
@@ -949,6 +954,13 @@ void Fuzzer::Loop(std::vector<SizedFile> &CorporaFiles) {
     MutateAndTestOne();
 
     PurgeAllocator();
+
+    auto cur_time = system_clock::now();
+    double passed_minutes = static_cast<double>(duration_cast<seconds>(cur_time - last_log_time).count()) / 60.0;
+    if (passed_minutes > 30.0) {
+      ReportCorpusLog(&F->Corpus);
+      last_log_time = cur_time;
+    }
   }
 
   PrintStats("DONE  ", "\n");
