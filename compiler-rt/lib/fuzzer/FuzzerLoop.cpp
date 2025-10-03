@@ -731,6 +731,18 @@ void Fuzzer::TryDetectingAMemoryLeak(const uint8_t *Data, size_t Size,
   }
 }
 
+void ReportCorpusLog(InputCorpus* Corpus) {
+  auto& II = Corpus->Inputs;
+  for (auto I : II) {
+    static char buffer[2048];
+    sprintf(buffer,
+            "{\"fuzzer\": \"libFuzzer\", \"sha\": \"%s\", \"tries\": %d}",
+            Sha1ToString(I->Sha1).c_str(), I->FuzzTimeTotal
+    );
+    FluentF(buffer);
+  }
+}
+
 void Fuzzer::MutateAndTestOne() {
   MD.StartMutationSequence();
 
@@ -772,8 +784,8 @@ void Fuzzer::MutateAndTestOne() {
     II.NumExecutedMutations++;
     Corpus.IncrementNumExecutedMutations();
 
-	II.FuzzTimeSinceLastNewCov++;
-  II.FuzzTimeTotal++;
+    II.FuzzTimeSinceLastNewCov++;
+    II.FuzzTimeTotal++;
     bool FoundUniqFeatures = false;
     bool NewCov = RunOne(CurrentUnitData, Size, /*MayDeleteFile=*/true, &II,
                          /*ForceAddToCorpus*/ false, &FoundUniqFeatures);
@@ -781,22 +793,31 @@ void Fuzzer::MutateAndTestOne() {
                             /*DuringInitialCorpusExecution*/ false);
     if (NewCov) {
       ReportNewCoverage(&II, {CurrentUnitData, CurrentUnitData + Size});
-	  uint8_t currentUnitSHA1[kSHA1NumBytes];
-	  ComputeSHA1(CurrentUnitData, Size, currentUnitSHA1);
-	  Printf("[^] SHA1=%s find new interests after %d tries, New SHA1=%s.\n",
-			  Sha1ToString(II.Sha1).c_str(),
-			  II.FuzzTimeSinceLastNewCov,
-			  Sha1ToString(currentUnitSHA1).c_str());
-    char buffer[2048];
-    sprintf(buffer,
-            "{\"fuzzer\": \"libFuzzer\", \"old\": \"%s\", \"new\": \"%s\", "
-            "\"tries\": %d}",
-            Sha1ToString(II.Sha1).c_str(), Sha1ToString(currentUnitSHA1).c_str(), 
-            II.FuzzTimeSinceLastNewCov);
-    FluentF(buffer);
-	  II.FuzzTimeSinceLastNewCov = 0;
-      break;  // We will mutate this input more in the next rounds.
+      uint8_t currentUnitSHA1[kSHA1NumBytes];
+      ComputeSHA1(CurrentUnitData, Size, currentUnitSHA1);
+      Printf("[^] SHA1=%s find new interests after %d tries, New SHA1=%s.\n",
+             Sha1ToString(II.Sha1).c_str(), II.FuzzTimeSinceLastNewCov,
+             Sha1ToString(currentUnitSHA1).c_str());
+      char buffer[2048];
+      sprintf(buffer,
+              "{\"fuzzer\": \"libFuzzer\", \"old\": \"%s\", \"new\": \"%s\", "
+              "\"tries\": %d}",
+              Sha1ToString(II.Sha1).c_str(),
+              Sha1ToString(currentUnitSHA1).c_str(),
+              II.FuzzTimeSinceLastNewCov);
+      FluentF(buffer);
+      II.FuzzTimeSinceLastNewCov = 0;
     }
+
+    auto cur_time = system_clock::now();
+    double passed_minutes = static_cast<double>(duration_cast<seconds>(cur_time - this->LastLogTime).count()) / 60.0;
+    if (passed_minutes > 9.5) {
+      ReportCorpusLog(&F->Corpus);
+      this->LastLogTime = cur_time;
+    }
+
+    if (NewCov) break; // We will mutate this input more in the next rounds.
+
     if (Options.ReduceDepth && !FoundUniqFeatures)
       break;
   }
@@ -891,19 +912,6 @@ void Fuzzer::ReadAndExecuteSeedCorpora(std::vector<SizedFile> &CorporaFiles) {
   }
 }
 
-void ReportCorpusLog(InputCorpus* Corpus) {
-  auto& II = Corpus->Inputs;
-  for (auto I : II) {
-    static char buffer[2048];
-    sprintf(buffer,
-            "{\"fuzzer\": \"libFuzzer\", \"sha\": \"%s\", \"tries\": %d}",
-            Sha1ToString(I->Sha1).c_str(), I->FuzzTimeTotal
-    );
-    FluentF(buffer);
-  }
-}
-
-
 void Fuzzer::Loop(std::vector<SizedFile> &CorporaFiles) {
   auto FocusFunctionOrAuto = Options.FocusFunction;
   DFT.Init(Options.DataFlowTrace, &FocusFunctionOrAuto, CorporaFiles,
@@ -917,10 +925,6 @@ void Fuzzer::Loop(std::vector<SizedFile> &CorporaFiles) {
 
   TmpMaxMutationLen =
       Min(MaxMutationLen, Max(size_t(4), Corpus.MaxInputSize()));
-
-  
-  auto last_log_time = system_clock::now();
-
 
   while (true) {
     auto Now = system_clock::now();
@@ -954,13 +958,6 @@ void Fuzzer::Loop(std::vector<SizedFile> &CorporaFiles) {
     MutateAndTestOne();
 
     PurgeAllocator();
-
-    auto cur_time = system_clock::now();
-    double passed_minutes = static_cast<double>(duration_cast<seconds>(cur_time - last_log_time).count()) / 60.0;
-    if (passed_minutes > 9.5) {
-      ReportCorpusLog(&F->Corpus);
-      last_log_time = cur_time;
-    }
   }
 
   PrintStats("DONE  ", "\n");
