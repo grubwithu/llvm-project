@@ -957,7 +957,7 @@ void Fuzzer::Loop(std::vector<SizedFile> &CorporaFiles) {
 
     auto cur_time = system_clock::now();
     double passed_minutes = static_cast<double>(duration_cast<seconds>(cur_time - last_log_time).count()) / 60.0;
-    if (passed_minutes > 30.0) {
+    if (passed_minutes > 9.5) {
       ReportCorpusLog(&F->Corpus);
       last_log_time = cur_time;
     }
