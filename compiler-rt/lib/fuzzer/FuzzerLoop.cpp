@@ -740,6 +740,7 @@ void ReportCorpusLog(InputCorpus* Corpus) {
             Sha1ToString(I->Sha1).c_str(), I->FuzzTimeTotal
     );
     FluentF(buffer);
+    I->FuzzTimeTotal = 0;
   }
 }
 
@@ -811,7 +812,8 @@ void Fuzzer::MutateAndTestOne() {
 
     auto cur_time = system_clock::now();
     double passed_minutes = static_cast<double>(duration_cast<seconds>(cur_time - this->LastLogTime).count()) / 60.0;
-    if (passed_minutes > 9.5) {
+    // Printf("INFO: %f minutes passed since last log.\n", passed_minutes);
+    if (passed_minutes > 2.0) {
       ReportCorpusLog(&F->Corpus);
       this->LastLogTime = cur_time;
     }
