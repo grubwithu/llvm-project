@@ -130,6 +130,8 @@ private:
 
   system_clock::time_point LastAllocatorPurgeAttemptTime = system_clock::now();
 
+  system_clock::time_point LastLogTime = system_clock::now();
+
   UserCallback CB;
   InputCorpus &Corpus;
   MutationDispatcher &MD;
