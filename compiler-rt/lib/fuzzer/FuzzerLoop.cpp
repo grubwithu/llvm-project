@@ -733,8 +733,8 @@ void Fuzzer::TryDetectingAMemoryLeak(const uint8_t *Data, size_t Size,
 
 void ReportCorpusLog(InputCorpus* Corpus) {
   auto& II = Corpus->Inputs;
+  static char buffer[2048];
   for (auto I : II) {
-    static char buffer[2048];
     sprintf(buffer,
             "{\"fuzzer\": \"libFuzzer\", \"sha\": \"%s\", \"tries\": %d}",
             Sha1ToString(I->Sha1).c_str(), I->FuzzTimeTotal
@@ -742,6 +742,7 @@ void ReportCorpusLog(InputCorpus* Corpus) {
     FluentF(buffer);
     I->FuzzTimeTotal = 0;
   }
+  FluentF("{\"fuzzer\": \"libFuzzer\", \"separator\": \"\"}");
 }
 
 void Fuzzer::MutateAndTestOne() {
