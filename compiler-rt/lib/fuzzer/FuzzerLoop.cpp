@@ -764,10 +764,10 @@ void ReportCorpusLog(InputCorpus* Corpus) {
             Sha1ToString(I->Sha1).c_str(), I->FuzzTimeTotal
     );
     FluentF(buffer);
-    I->FuzzTimeTotal = 0;
+    delete I;
   }
   Corpus->DeletedInputs.clear();
-  
+
   FluentF("{\"fuzzer\": \"libFuzzer\", \"separator\": \"\"}");
 }
 
