@@ -757,6 +757,17 @@ void ReportCorpusLog(InputCorpus* Corpus) {
     FluentF(buffer);
     I->FuzzTimeTotal = 0;
   }
+
+  for (auto I : Corpus->DeletedInputs) {
+    sprintf(buffer,
+            "{\"fuzzer\": \"libFuzzer\", \"sha\": \"%s\", \"tries\": %d}",
+            Sha1ToString(I->Sha1).c_str(), I->FuzzTimeTotal
+    );
+    FluentF(buffer);
+    I->FuzzTimeTotal = 0;
+  }
+  Corpus->DeletedInputs.clear();
+  
   FluentF("{\"fuzzer\": \"libFuzzer\", \"separator\": \"\"}");
 }
 

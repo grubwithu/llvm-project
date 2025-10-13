@@ -356,6 +356,7 @@ public:
 
   void DeleteInput(size_t Idx) {
     InputInfo &II = *Inputs[Idx];
+    DeletedInputs.push_back(new InputInfo(II));
     DeleteFile(II);
     Unit().swap(II.U);
     II.Energy = 0.0;
@@ -578,6 +579,7 @@ private:
 
   std::unordered_set<std::string> Hashes;
   std::vector<InputInfo *> Inputs;
+  std::vector<InputInfo *> DeletedInputs;
 
   size_t NumAddedFeatures = 0;
   size_t NumUpdatedFeatures = 0;
