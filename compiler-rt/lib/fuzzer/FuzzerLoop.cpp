@@ -560,19 +560,22 @@ bool Fuzzer::RunOne(const uint8_t *Data, size_t Size, bool MayDeleteFile,
     WriteEdgeToMutationGraphFile(Options.MutationGraphFile, NewII, II,
                                  MD.MutationSequence());
 
-    uint8_t currentUnitSHA1[kSHA1NumBytes];
-    ComputeSHA1(CurrentUnitData, Size, currentUnitSHA1);
-    Printf("[^] SHA1=%s find new interests after %d tries, New SHA1=%s.\n",
-           Sha1ToString(II->Sha1).c_str(), II->FuzzTimeSinceLastNewCov,
-           Sha1ToString(currentUnitSHA1).c_str());
-    char buffer[2048];
-    sprintf(buffer,
-            "{\"fuzzer\": \"libFuzzer\", \"old\": \"%s\", \"new\": \"%s\", "
-            "\"tries\": %d}",
-            Sha1ToString(II->Sha1).c_str(),
-            Sha1ToString(currentUnitSHA1).c_str(), II->FuzzTimeSinceLastNewCov);
-    FluentF(buffer);
-    II->FuzzTimeSinceLastNewCov = 0;
+    if (II) {
+      uint8_t currentUnitSHA1[kSHA1NumBytes];
+      ComputeSHA1(CurrentUnitData, Size, currentUnitSHA1);
+      Printf("[^] SHA1=%s find new interests after %d tries, New SHA1=%s.\n",
+             Sha1ToString(II->Sha1).c_str(), II->FuzzTimeSinceLastNewCov,
+             Sha1ToString(currentUnitSHA1).c_str());
+      char buffer[2048];
+      sprintf(buffer,
+              "{\"fuzzer\": \"libFuzzer\", \"old\": \"%s\", \"new\": \"%s\", "
+              "\"tries\": %d}",
+              Sha1ToString(II->Sha1).c_str(),
+              Sha1ToString(currentUnitSHA1).c_str(),
+              II->FuzzTimeSinceLastNewCov);
+      FluentF(buffer);
+      II->FuzzTimeSinceLastNewCov = 0;
+    }
 
     return true;
   }
