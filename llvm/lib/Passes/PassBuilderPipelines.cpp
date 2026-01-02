@@ -82,6 +82,7 @@
 #include "llvm/Transforms/Instrumentation/PGOCtxProfLowering.h"
 #include "llvm/Transforms/Instrumentation/PGOForceFunctionAttrs.h"
 #include "llvm/Transforms/Instrumentation/PGOInstrumentation.h"
+#include "llvm/Transforms/FuzzIntrospector/FuzzIntrospector.h"
 #include "llvm/Transforms/Scalar/ADCE.h"
 #include "llvm/Transforms/Scalar/AlignmentFromAssumptions.h"
 #include "llvm/Transforms/Scalar/AnnotationRemarks.h"
@@ -1858,6 +1859,7 @@ PassBuilder::buildLTODefaultPipeline(OptimizationLevel Level,
   // Create a function that performs CFI checks for cross-DSO calls with targets
   // in the current module.
   MPM.addPass(CrossDSOCFIPass());
+  MPM.addPass(FuzzIntrospectorPass());
 
   if (Level == OptimizationLevel::O0) {
     // The WPD and LowerTypeTest passes need to run at -O0 to lower type
